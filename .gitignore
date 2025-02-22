@@ -1,3 +1,5 @@
 /target
+db/*
+!db/.gitkeep
 
 client_secret.json
