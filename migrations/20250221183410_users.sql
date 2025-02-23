@@ -1,15 +1,22 @@
-CREATE TABLE profiles (
-    uuid UUID NOT NULL UNIQUE,
-    open_id UUID NOT NULL,
-    room_id UUID NOT NULL,
-    alias TEXT NOT NULL,
-    UNIQUE(open_id, room_id)
+create table profiles (
+    uuid text not null unique,
+
+    user_id text not null,
+    room_id text not null,
+
+    handle text not null,
+    alias text not null,
+
+    unique(user_id, room_id),
+    unique(handle, room_id)
 );
 
-CREATE TABLE rooms (
-    uuid UUID NOT NULL UNIQUE,
-    name TEXT NOT NULL,
-    msgs_json UUID NOT NULL
+create table rooms (
+    uuid text not null unique,
+
+    name text not null,
+
+    msgs_json json not null
 );
 
-INSERT INTO rooms (uuid,name,msgs_json) VALUES ("67e55044-10b1-426f-9247-bb680e5fe0c8","OG Server","[{pid:69,msg:'hello'}]")
+insert into rooms (uuid,name,msgs_json) values ("67e55044-10b1-426f-9247-bb680e5fe0c8","OG Room","[{pid:69,msg:'hello'}]")

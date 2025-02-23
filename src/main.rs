@@ -3,10 +3,10 @@ use std::str::FromStr;
 use anyhow::anyhow;
 
 use axum::{
-    debug_handler, extract::{FromRef, Path, Query, State}, http::StatusCode, response::{Html, IntoResponse, Redirect, Response}, routing::get, Extension, Router
+    debug_handler, extract::{FromRef, Path, Query, State}, http::StatusCode, response::{Html, IntoResponse, Redirect, Response}, routing::get, Router
 };
-use oauth2::{basic::{BasicClient, BasicErrorResponse, BasicRevocationErrorResponse, BasicTokenIntrospectionResponse, BasicTokenResponse, BasicTokenType}, reqwest, AuthUrl, AuthorizationCode, Client, ClientId, ClientSecret, CsrfToken, EndpointNotSet, ExtraTokenFields, PkceCodeChallenge, PkceCodeVerifier, RedirectUrl, RevocationUrl, Scope, StandardRevocableToken, StandardTokenResponse, TokenResponse, TokenType, TokenUrl};
-use serde::{Deserialize, Serialize};
+use oauth2::{basic::BasicClient, reqwest, AuthUrl, AuthorizationCode, Client, ClientId, ClientSecret, CsrfToken, PkceCodeChallenge, PkceCodeVerifier, RedirectUrl, RevocationUrl, Scope, TokenResponse, TokenUrl};
+use serde::Deserialize;
 use sqlx::{sqlite::SqlitePoolOptions, SqlitePool};
 use tower_sessions::{Expiry, MemoryStore, Session, SessionManagerLayer};
 use uuid::Uuid;
@@ -18,6 +18,8 @@ pub struct AppState {
 
 #[tokio::main]
 async fn main() {
+    std::env::set_var("RUST_BACKTRACE", "1");
+
     let session_store = MemoryStore::default();
     let session_layer = SessionManagerLayer::new(session_store)
         .with_secure(false)
@@ -33,12 +35,36 @@ async fn main() {
         .route("/", get(hello))
         .route("/login", get(login))
         .route("/yippee", get(yippee))
+        .route("/logout", get(logout))
+        .route("/r/0", get(private_room))
         .route("/r/{uuid}", get(room))
         // .layer(CorsLayer::permissive())
         .with_state(app_state)
         .layer(session_layer);
     let listener = tokio::net::TcpListener::bind("0.0.0.0:8080").await.unwrap();
     axum::serve(listener, app).await.unwrap();
+}
+
+#[debug_handler]
+async fn private_room(session: Session, State(db_pool): State<SqlitePool>) -> AppResult<impl IntoResponse> {
+    if let Some(user_id) = session.get::<String>("user_id").await? {
+        let (alias,): (String,) = sqlx::query_as("SELECT alias FROM profiles WHERE user_id=? AND room_id=0").bind(user_id).fetch_one(&db_pool).await?;
+
+        return Ok(Html(format!(r#"<!DOCTYPE html>
+        <html lang="en">
+        <head>
+            <meta charset="UTF-8">
+            <title>Silent Hugs</title>
+        </head>
+        <body>
+            <a href='/'>go home</a>
+            <br>
+            <h1>Welcome {}!</h1>
+        </body>
+        </html>"#, alias)));
+    }
+
+    Ok(Html("Welcome to the private room, <a href='/login'>Log In</a><br><a href='/'>go home</a>".to_string()))
 }
 
 #[debug_handler]
@@ -62,7 +88,7 @@ impl IntoResponse for AppError {
     fn into_response(self) -> Response {
         (
             StatusCode::INTERNAL_SERVER_ERROR,
-            format!("Something went wrong: {}", self.0),
+            format!("{}\n\n{}", self.0, self.0.backtrace()),
         )
             .into_response()
     }
@@ -81,24 +107,8 @@ where
 
 #[debug_handler]
 async fn hello(
-    State(db_pool): State<SqlitePool>,
     session: Session
 ) -> AppResult<impl IntoResponse> {
-    if let Some(user_id) = session.get::<String>("user_id").await? {
-        let (alias,): (String,) = sqlx::query_as("SELECT alias FROM profiles WHERE user_id=? AND room_id=0").bind(user_id).fetch_one(&db_pool).await?;
-
-        return Ok(Html(format!(r#"<!DOCTYPE html>
-        <html lang="en">
-        <head>
-            <meta charset="UTF-8">
-            <title>Silent Hugs</title>
-        </head>
-        <body>
-            <h1>Welcome {}!</h1>
-        </body>
-        </html>"#, alias)));
-    }
-
     Ok(Html(format!(r#"<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -106,23 +116,22 @@ async fn hello(
     <title>Silent Hugs</title>
 </head>
 <body>
-    <a href='/login'><h1>Log in</h1></a>
-</body>
-</html>"#)))
+    <a href='/r/0'>go to the private room</a>
+    <h1>{}</h1>
+    </body>
+</html>"#, if session.get::<String>("user_id").await?.is_some() { "<a href='/logout'>Log out?</a>" } else {"<a href='/login'>Log in</a>" })))
 }
 
 #[derive(Deserialize)]
-struct LoginQuery {
+struct ReturnUrlQuery {
     return_url: Option<String>,
 }
 
 #[debug_handler]
 async fn login(
-    Query(LoginQuery { return_url }): Query<LoginQuery>,
+    Query(ReturnUrlQuery { return_url }): Query<ReturnUrlQuery>,
     session: Session
 ) -> AppResult<Redirect> {
-    let return_url = return_url.unwrap_or("/".to_string());
-
     let client = get_client()?;
     
     let (pkce_code_challenge, pkce_verifier) = PkceCodeChallenge::new_random_sha256();
@@ -134,7 +143,9 @@ async fn login(
 
     session.insert("csrf_state", csrf_state.secret()).await?;
     session.insert("pkce_verifier", pkce_verifier.secret()).await?;
-    session.insert("return_url", return_url).await?;
+    if let Some(return_url) = return_url {
+        session.insert("return_url", return_url).await?;
+    }
 
     Ok(Redirect::to(authorize_url.as_str()))
 }
@@ -145,13 +156,6 @@ struct OAuth2ReturnQuery {
     code: Option<String>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-struct OpenIdExtraFields {
-    id_token: String,
-}
-
-impl ExtraTokenFields for OpenIdExtraFields {}
-
 #[debug_handler]
 async fn yippee(
     Query(OAuth2ReturnQuery { state, code }): Query<OAuth2ReturnQuery>,
@@ -161,12 +165,22 @@ async fn yippee(
     let state = CsrfToken::new(state.unwrap_or("OAuth: without state".to_string()));
     let code = AuthorizationCode::new(code.unwrap_or("OAuth: without code".to_string()));
 
-    let stored_state: String = session.get("csrf_state").await?.unwrap();
+    let stored_state: String = match session.get("csrf_state").await? {
+        Some(x) => x,
+        None => {
+            return Err(anyhow!("no csrf_state").into());
+        }
+    };
     if state.secret().as_str() != stored_state.as_str() {
         return Err(anyhow!("csrf tokens don't match").into());
     }
 
-    let pkce_verifier: String = session.get("pkce_verifier").await?.unwrap();
+    let pkce_verifier: String = match session.get("pkce_verifier").await? {
+        Some(x) => x,
+        None => {
+            return Err(anyhow!("no pkce_verifier").into()); 
+        }
+    };
     
     let client = get_client()?;
     let http_client = reqwest::ClientBuilder::new()
@@ -179,19 +193,13 @@ async fn yippee(
         .await?;
 
     let access_token = token_result.access_token().secret();
-    let id_token = &token_result.extra_fields().id_token;
-    let body = reqwest::get("https://oauth2.googleapis.com/tokeninfo?id_token=".to_owned() + id_token).await?.text().await?;
-    println!("b = {body}");
-
-    
     let url = "https://www.googleapis.com/oauth2/v2/userinfo?oauth_token=".to_owned() + access_token;
     let body = reqwest::get(url).await?.text().await?;
     let mut body: serde_json::Value = serde_json::from_str(body.as_str())?;
     
     println!("body = {body}");
-    return Ok(Redirect::to("/"));
+    let mut return_url = session.get("return_url").await?;
     let user_id = body["id"].take().as_str().unwrap().to_string();
-    let return_url: String = session.get("return_url").await?.unwrap();
     
     session.insert("user_id", user_id.clone()).await?;
     
@@ -205,22 +213,41 @@ async fn yippee(
         }
         Err(sqlx::Error::RowNotFound) => {
             let name = body["name"].take().as_str().unwrap().to_string();
-            println!("adding {user_id}");
-            sqlx::query("INSERT INTO profiles (user_id,room_id,alias) VALUES (?,0,?)")
+            println!("adding {name} ({user_id})");
+            let uuid = Uuid::now_v7();
+            let handle = "user".to_owned() + &uuid.simple().to_string();
+            sqlx::query("insert into profiles (uuid,user_id,room_id,handle,alias) VALUES (?,?,0,?,?)")
+                .bind(uuid.to_string())
                 .bind(user_id)
+                .bind(handle)
                 .bind(name)
                 .execute(&db_pool)
                 .await?;
+
+            if return_url.is_none() {
+                return_url = Some("/r/0".to_string());
+            }
         }
         Err(e) => {
             return Err(AppError(anyhow::Error::from(e)));
         }
     }
 
+    let return_url: String = return_url.unwrap_or("/".to_string());
+
     Ok(Redirect::to(return_url.as_str()))
 }
 
-fn get_client() -> anyhow::Result<Client<oauth2::StandardErrorResponse<oauth2::basic::BasicErrorResponseType>, StandardTokenResponse<OpenIdExtraFields, BasicTokenType>, oauth2::StandardTokenIntrospectionResponse<oauth2::EmptyExtraTokenFields, BasicTokenType>, StandardRevocableToken, oauth2::StandardErrorResponse<oauth2::RevocationErrorResponseType>, oauth2::EndpointSet, EndpointNotSet, EndpointNotSet, oauth2::EndpointSet, oauth2::EndpointSet>>  {
+#[debug_handler]
+async fn logout(
+    Query(ReturnUrlQuery { return_url }): Query<ReturnUrlQuery>,
+    session: Session
+) -> AppResult<Redirect> {
+    session.clear().await;
+    Ok(Redirect::to(return_url.unwrap_or("/".to_string()).as_str()))
+}
+
+fn get_client() -> anyhow::Result<Client<oauth2::StandardErrorResponse<oauth2::basic::BasicErrorResponseType>, oauth2::StandardTokenResponse<oauth2::EmptyExtraTokenFields, oauth2::basic::BasicTokenType>, oauth2::StandardTokenIntrospectionResponse<oauth2::EmptyExtraTokenFields, oauth2::basic::BasicTokenType>, oauth2::StandardRevocableToken, oauth2::StandardErrorResponse<oauth2::RevocationErrorResponseType>, oauth2::EndpointSet, oauth2::EndpointNotSet, oauth2::EndpointNotSet, oauth2::EndpointSet, oauth2::EndpointSet>> {
     let mut client_secret: serde_json::Value = serde_json::from_str(include_str!("../client_secret.json"))?;
     let web = client_secret["web"].take();
 
@@ -236,18 +263,7 @@ fn get_client() -> anyhow::Result<Client<oauth2::StandardErrorResponse<oauth2::b
     let revoke_url = RevocationUrl::new("https://oauth2.googleapis.com/revoke".to_string())?;
 
     let redirect_url = RedirectUrl::new("http://localhost:8080/yippee".to_string())?;
-    let client = Client::<
-        BasicErrorResponse,
-        StandardTokenResponse<OpenIdExtraFields, BasicTokenType>,
-        BasicTokenIntrospectionResponse,
-        StandardRevocableToken,
-        BasicRevocationErrorResponse,
-        EndpointNotSet,
-        EndpointNotSet,
-        EndpointNotSet,
-        EndpointNotSet,
-        EndpointNotSet,
-    >::new(id)
+    let client = BasicClient::new(id)
         .set_client_secret(secret)
         .set_auth_uri(auth_url)
         .set_token_uri(token_url)
