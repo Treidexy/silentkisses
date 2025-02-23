@@ -2,7 +2,7 @@ create table profiles (
     uuid text not null unique,
 
     user_id text not null,
-    room_id text not null,
+    room_id text not null, 
 
     handle text not null,
     alias text not null,
