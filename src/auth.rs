@@ -1,7 +1,8 @@
 use std::str::FromStr;
 
-use axum::{debug_handler, extract::{Query, State}, response::{ErrorResponse, IntoResponse, Redirect}};
+use axum::{debug_handler, extract::{Query, State}, response::{IntoResponse, Redirect}};
 use oauth2::{basic::BasicClient, reqwest, AuthUrl, AuthorizationCode, Client, ClientId, ClientSecret, CsrfToken, PkceCodeChallenge, PkceCodeVerifier, RedirectUrl, RevocationUrl, Scope, TokenResponse, TokenUrl};
+use rand::seq::IndexedRandom;
 use serde::Deserialize;
 use sqlx::SqlitePool;
 use tower_sessions::Session;
@@ -22,10 +23,23 @@ pub struct OAuth2ReturnQuery {
     pub code: Option<String>,
 }
 
-async fn create_user(db_pool: SqlitePool, user_id: String, alias: String) -> Result<sqlx::sqlite::SqliteQueryResult, sqlx::Error> {
+async fn create_user(db_pool: SqlitePool, user_id: String) -> Result<sqlx::sqlite::SqliteQueryResult, sqlx::Error> {
     let uuid = Uuid::now_v7();
     let handle = "user".to_owned() + &uuid.simple().to_string();
-
+    let adjectives = [
+        "Quick", "Lazy", "Mysterious", "Jolly", "Brave", "Silent", "Witty", "Fierce",
+        "Clever", "Gentle", "Wild", "Calm", "Bold", "Shy", "Proud", "Happy", "Sad",
+        "Eager", "Fancy", "Rusty", "Golden", "Silver", "Bright", "Dark", "Lucky",
+        ];
+        
+    let nouns = [
+        "Fox", "Bear", "Eagle", "Wolf", "Dragon", "Tiger", "Lion", "Owl", "Rabbit",
+        "Falcon", "Hawk", "Shark", "Panda", "Kitten", "Puppy", "Phoenix", "Griffin",
+        "Unicorn", "Turtle", "Dolphin", "Whale", "Elephant", "Giraffe", "Zebra",
+    ];
+    
+    let alias = format!("{} {}", adjectives.choose(&mut rand::rng()).unwrap(), nouns.choose(&mut rand::rng()).unwrap());
+            
     println!("adding @{handle}#{user_id}, {alias}");
     sqlx::query("insert into profiles (uuid,user_id,room_id,handle,alias) VALUES (?,?,0,?,?)")
         .bind(uuid.to_string())
@@ -60,7 +74,7 @@ pub async fn login(
 }
 
 #[debug_handler]
-pub async fn yippee(
+pub async fn lockin(
     Query(OAuth2ReturnQuery { state, code }): Query<OAuth2ReturnQuery>,
     State(db_pool): State<SqlitePool>,
     session: Session,
@@ -114,9 +128,7 @@ pub async fn yippee(
             println!("welcome @{handle}#{user_id}, {alias}");
         }
         Err(sqlx::Error::RowNotFound) => {
-            let alias = body["name"].take().as_str().unwrap_or("Nameless User").to_string();
-            
-            create_user(db_pool, user_id, alias).await?;
+            create_user(db_pool, user_id).await?;
 
             if return_url.is_none() {
                 return_url = Some("/r/0".to_string());
@@ -128,7 +140,6 @@ pub async fn yippee(
     }
 
     let return_url: String = return_url.unwrap_or("/".to_string());
-
     Ok(Redirect::to(return_url.as_str()))
 }
 
@@ -143,20 +154,20 @@ pub async fn logout(
 
 fn get_client() -> anyhow::Result<Client<oauth2::StandardErrorResponse<oauth2::basic::BasicErrorResponseType>, oauth2::StandardTokenResponse<oauth2::EmptyExtraTokenFields, oauth2::basic::BasicTokenType>, oauth2::StandardTokenIntrospectionResponse<oauth2::EmptyExtraTokenFields, oauth2::basic::BasicTokenType>, oauth2::StandardRevocableToken, oauth2::StandardErrorResponse<oauth2::RevocationErrorResponseType>, oauth2::EndpointSet, oauth2::EndpointNotSet, oauth2::EndpointNotSet, oauth2::EndpointSet, oauth2::EndpointSet>> {
     let mut client_secret: serde_json::Value = serde_json::from_str(include_str!("../client_secret.json"))?;
-    let web = client_secret["web"].take();
+    let provider: serde_json::Value = client_secret["google"].take();
 
-    fn ez(web: &serde_json::Value, key: &str) -> String {
-        String::from_str(web[key].as_str().unwrap()).unwrap()
+    fn ez(provider: &serde_json::Value, key: &str) -> String {
+        String::from_str(provider[key].as_str().unwrap()).unwrap()
     }
 
-    let id = ClientId::new(ez(&web, "client_id"));
-    let secret = ClientSecret::new(ez(&web, "client_secret"));
+    let id = ClientId::new(ez(&provider, "client_id"));
+    let secret = ClientSecret::new(ez(&provider, "client_secret"));
 
-    let auth_url = AuthUrl::new(ez(&web, "auth_uri"))?;
-    let token_url = TokenUrl::new(ez(&web, "token_uri"))?;
-    let revoke_url = RevocationUrl::new("https://oauth2.googleapis.com/revoke".to_string())?;
+    let auth_url = AuthUrl::new(ez(&provider, "auth_uri"))?;
+    let token_url = TokenUrl::new(ez(&provider, "token_uri"))?;
+    let revoke_url = RevocationUrl::new(ez(&provider, "revoke_uri"))?;
 
-    let redirect_url = RedirectUrl::new("http://localhost:8080/yippee".to_string())?;
+    let redirect_url = RedirectUrl::new("http://localhost:8080/lockin".to_string())?;
     let client = BasicClient::new(id)
         .set_client_secret(secret)
         .set_auth_uri(auth_url)

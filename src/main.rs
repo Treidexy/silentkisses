@@ -1,6 +1,6 @@
 use silentkisses::{appresult::AppResult, auth};
 use axum::{
-    debug_handler, extract::{FromRef, Path, Request, State}, response::{Html, IntoResponse}, routing::get, Router
+    debug_handler, extract::{FromRef, Path, State}, response::{Html, IntoResponse}, routing::get, Router
 };
 use sqlx::{sqlite::SqlitePoolOptions, SqlitePool};
 use tower_sessions::{Expiry, MemoryStore, Session, SessionManagerLayer};
@@ -31,7 +31,7 @@ async fn main() {
         .route("/res/background.jpg", get(res_background))
 
         .route("/login", get(auth::login))
-        .route("/yippee", get(auth::yippee))
+        .route("/lockin", get(auth::lockin))
         .route("/logout", get(auth::logout))
         .route("/r/0", get(private_room))
         .route("/r/{uuid}", get(room))
@@ -44,13 +44,18 @@ async fn main() {
 #[debug_handler]
 async fn hello(
     session: Session
-) -> impl IntoResponse {
-    Html(include_str!("pages/index.html"))
+) -> AppResult<impl IntoResponse> {
+    let p = if session.get::<String>("user_id").await?.is_some() {
+        include_str!("pages/index_logout.html")
+    } else {
+        include_str!("pages/index_login.html")
+    };
+
+    Ok(Html(p))
 }
 
 #[debug_handler]
-async fn res_background(r: Request) -> impl IntoResponse {
-    println!("r = {r:?}");
+async fn res_background() -> impl IntoResponse {
     include_bytes!("../res/background.jpg")
 }
 

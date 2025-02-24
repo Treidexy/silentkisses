@@ -5,7 +5,6 @@ edition = "2021"
 
 [dependencies]
 axum = { version = "0.8.1", features = [ "macros" ] }
-axum-extra = { version = "0.10.0", features = ["typed-header"] }
 tokio = { version = "1.43.0", features = ["rt", "rt-multi-thread", "macros"] }
 serde = { version = "1.0.218", features = ["derive"] }
 json = "0.12.4"
@@ -18,3 +17,4 @@ sqlx = { version = "0.8.3", features = ["sqlite", "runtime-tokio"] }
 tower-sessions = "0.14.0"
 time = "0.3.37"
 dotenv = "0.15.0"
+rand = "0.9.0"
