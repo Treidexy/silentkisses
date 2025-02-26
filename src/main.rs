@@ -1,15 +1,12 @@
-use silentkisses::{appresult::AppResult, auth};
+use std::str::FromStr;
+
+use silentkisses::{auth, AppResult, AppState};
 use axum::{
-    debug_handler, extract::{FromRef, Path, State}, response::{Html, IntoResponse}, routing::get, Router
+    debug_handler, extract::{Path, State}, response::{Html, IntoResponse}, routing::get, Router
 };
 use sqlx::{sqlite::SqlitePoolOptions, SqlitePool};
 use tower_sessions::{Expiry, MemoryStore, Session, SessionManagerLayer};
 use uuid::Uuid;
-
-#[derive(Clone, FromRef)]
-pub struct AppState {
-    pub db_pool: SqlitePool,
-}
 
 #[tokio::main]
 async fn main() {
@@ -24,14 +21,19 @@ async fn main() {
         .max_connections(16)
         .connect(dotenv::var("DATABASE_URL").unwrap().as_str())
         .await.unwrap();
-    let app_state = AppState {db_pool};
+
+    let clients = auth::Clients::from_json(serde_json::Value::from_str(include_str!("../client_secret.json")).unwrap()).unwrap();
+    let app_state = AppState {
+        db_pool,
+        clients,
+    };
 
     let app = Router::new()
         .route("/", get(hello))
         .route("/res/background.jpg", get(res_background))
 
-        .route("/login", get(auth::login))
-        .route("/lockin", get(auth::lockin))
+        .route("/login/{provider}", get(auth::login))
+        .route("/lockin/{provider}", get(auth::lockin))
         .route("/logout", get(auth::logout))
         .route("/r/0", get(private_room))
         .route("/r/{uuid}", get(room))
