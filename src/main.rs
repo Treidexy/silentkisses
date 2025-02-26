@@ -32,6 +32,7 @@ async fn main() {
         .route("/", get(hello))
         .route("/res/background.jpg", get(res_background))
 
+        .route("/login", get(login))
         .route("/login/{provider}", get(auth::login))
         .route("/lockin/{provider}", get(auth::lockin))
         .route("/logout", get(auth::logout))
@@ -59,6 +60,11 @@ async fn hello(
 #[debug_handler]
 async fn res_background() -> impl IntoResponse {
     include_bytes!("../res/background.jpg")
+}
+
+#[debug_handler]
+async fn login() -> impl IntoResponse {
+    Html(include_str!("pages/login.html"))
 }
 
 #[debug_handler]
