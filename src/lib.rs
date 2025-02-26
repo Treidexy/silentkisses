@@ -1,4 +1,6 @@
 pub mod auth;
+pub mod rooms;
+pub mod res;
 
 use axum::{extract::FromRef, http::StatusCode, response::{IntoResponse, Response}};
 use oauth2::reqwest;
