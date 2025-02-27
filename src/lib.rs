@@ -1,8 +1,11 @@
 pub mod auth;
 pub mod rooms;
 pub mod res;
+pub mod session;
 
-use axum::{extract::FromRef, http::StatusCode, response::{IntoResponse, Response}};
+use std::ops::Deref;
+
+use axum::{extract::FromRef, http::StatusCode, response::{Html, IntoResponse, Response}};
 use oauth2::reqwest;
 use serde_json::Value;
 use sqlx::SqlitePool;
@@ -84,5 +87,26 @@ apperr_impl!(reqwest::Error);
 impl<E: core::error::Error + Send + Sync + 'static, R: oauth2::ErrorResponse + Send + Sync + 'static> From<oauth2::RequestTokenError<E, R>> for AppError {
     fn from(err: oauth2::RequestTokenError<E, R>) -> Self {
         Self(anyhow::Error::from(err))
+    }
+}
+
+pub struct Markdown<T>(pub T);
+
+impl<T> IntoResponse for Markdown<T>
+where
+    T: Deref<Target = str>
+{
+    fn into_response(self) -> axum::response::Response {
+        use pulldown_cmark::{Event, Parser, Options};
+
+        let parser = Parser::new_ext(&*self.0, Options::ENABLE_MATH)
+            .map(|event| match event {
+            Event::InlineMath(name) => Event::InlineMath(name),
+            _ => event,
+        });
+    
+        let mut html_output = String::new();
+        pulldown_cmark::html::push_html(&mut html_output, parser);
+        Html(html_output).into_response()
     }
 }

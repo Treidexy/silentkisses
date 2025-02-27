@@ -1,32 +1,11 @@
-use std::{ops::Deref, str::FromStr};
+use std::str::FromStr;
 
-use silentkisses::{auth, rooms, res, include_res, AppResult, AppState};
+use silentkisses::{auth, include_res, rooms, AppResult, AppState, Markdown};
 use axum::{
     debug_handler, response::{Html, IntoResponse}, routing::get, Router
 };
 use sqlx::sqlite::SqlitePoolOptions;
 use tower_sessions::{Expiry, MemoryStore, Session, SessionManagerLayer};
-
-struct Markdown<T>(T);
-
-impl<T> IntoResponse for Markdown<T>
-where
-    T: Deref<Target = str>
-{
-    fn into_response(self) -> axum::response::Response {
-        use pulldown_cmark::{Event, Parser, Options};
-
-        let parser = Parser::new_ext(&*self.0, Options::ENABLE_MATH)
-            .map(|event| match event {
-            Event::InlineMath(name) => Event::InlineMath(name),
-            _ => event,
-        });
-    
-        let mut html_output = format!("<style>{}</style>", include_res!(str, "/style.css"));
-        pulldown_cmark::html::push_html(&mut html_output, parser);
-        Html(html_output).into_response()
-    }
-}
 
 #[tokio::main]
 async fn main() {
@@ -51,7 +30,7 @@ async fn main() {
     let app = Router::new()
         .route("/", get(hello))
         .route("/test", get(test))
-        .route("/res/background.jpg", get(res::background))
+
 
         .route("/login", get(login))
         .route("/login/{provider}", get(auth::login))
