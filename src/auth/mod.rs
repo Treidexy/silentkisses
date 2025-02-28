@@ -1,3 +1,4 @@
+use axum::{routing::get, Router};
 use rand::seq::IndexedRandom;
 use sqlx::SqlitePool;
 
@@ -9,9 +10,16 @@ mod lockin;
 mod logout;
 
 pub use clients::Clients;
-pub use login::login;
-pub use lockin::lockin;
-pub use logout::logout;
+
+use crate::AppState;
+
+pub fn router() -> Router<AppState> {
+    Router::new()
+        .route("/login", get(login::login_page))
+        .route("/login/{provider}", get(login::login))
+        .route("/lockin/{provider}", get(lockin::lockin))
+        .route("/logout", get(logout::logout))
+}
 
 pub(crate) async fn create_profile(db_pool: &SqlitePool, user_id: &str, room_id: &str) -> Result<(Uuid, sqlx::sqlite::SqliteQueryResult), sqlx::Error> {
     let uuid = Uuid::now_v7();

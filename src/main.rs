@@ -6,7 +6,7 @@ use axum::{
 };
 use sqlx::sqlite::SqlitePoolOptions;
 use tokio::sync::broadcast;
-use tower_sessions::{Expiry, MemoryStore, Session, SessionManagerLayer};
+use tower_sessions::{cookie::SameSite, Expiry, MemoryStore, Session, SessionManagerLayer};
 
 #[tokio::main]
 async fn main() {
@@ -15,7 +15,8 @@ async fn main() {
     let session_store = MemoryStore::default();
     let session_layer = SessionManagerLayer::new(session_store)
         .with_secure(false)
-        .with_expiry(Expiry::OnInactivity(time::Duration::hours(1)));
+        .with_same_site(SameSite::Lax)
+        .with_expiry(Expiry::OnInactivity(time::Duration::minutes(5)));
 
     let db_pool = SqlitePoolOptions::new()
         .max_connections(16)
@@ -33,15 +34,8 @@ async fn main() {
         .route("/", get(hello))
         .route("/test", get(test))
 
-
-        .route("/login", get(login))
-        .route("/login/{provider}", get(auth::login))
-        .route("/lockin/{provider}", get(auth::lockin))
-        .route("/logout", get(auth::logout))
-
-        .route("/r/0", get(rooms::private_room))
-        .route("/r/{uuid}", get(rooms::room).post(rooms::send_msg))
-        .route("/r/{uuid}/ws", get(rooms::room_ws))
+        .merge(auth::router())
+        .nest("/r", rooms::router())
 
         .with_state(app_state)
         .layer(session_layer);
@@ -66,9 +60,3 @@ async fn hello(
 
     Ok(Html(p))
 }
-
-#[debug_handler]
-async fn login() -> impl IntoResponse {
-    Html(include_res!(str, "/pages/login.html"))
-}
-

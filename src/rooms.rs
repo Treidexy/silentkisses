@@ -1,7 +1,5 @@
 use axum::{
-    debug_handler,
-    extract::{Path, State, WebSocketUpgrade},
-    response::{Html, IntoResponse, Response}, Json,
+    debug_handler, extract::{Path, State, WebSocketUpgrade}, response::{Html, IntoResponse, Response}, routing::get, Json, Router
 };
 use pulldown_cmark::Parser;
 use serde::Deserialize;
@@ -10,7 +8,7 @@ use tokio::sync::broadcast;
 use tower_sessions::Session;
 use uuid::Uuid;
 
-use crate::{auth, include_res, session::USER_ID, AppResult};
+use crate::{auth, include_res, session::USER_ID, AppResult, AppState};
 
 #[derive(Deserialize)]
 pub struct MessageQuery {
@@ -21,6 +19,13 @@ pub struct MessageQuery {
 #[debug_handler]
 pub async fn private_room() -> impl IntoResponse {
     Html(include_res!(str, "pages/private_room.html"))
+}
+
+pub fn router() -> Router<AppState> {
+    Router::new()
+        .route("/0", get(private_room))
+        .route("/{uuid}", get(room).post(send_msg))
+        .route("/{uuid}/ws", get(room_ws))
 }
 
 #[debug_handler]
@@ -133,7 +138,7 @@ pub async fn send_msg(
         return Err(format!("you are not in r/{room_id}"))?;
     };
 
-    let id = Uuid::new_v4();
+    let id = Uuid::now_v7();
     sqlx::query("INSERT INTO messages (id,room_id,profile_id,reply_to_id,content) values (?,?,?,?,?)")
         .bind(id.to_string())
         .bind(room_id.to_string())

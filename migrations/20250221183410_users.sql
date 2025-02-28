@@ -12,7 +12,7 @@ create table profiles (
 
     unique(user_id, room_id),
     unique(handle, room_id)
-);
+) strict;
 
 create table rooms (
     -- rid
@@ -20,7 +20,7 @@ create table rooms (
 
     name text not null,
     is_public integer not null
-);
+) strict;
 
 create table messages (
     -- mid
@@ -36,7 +36,7 @@ create table messages (
     content text not null,
 
     unique(id, room_id)
-);
+) strict;
 
 insert into rooms (uuid, name, is_public) values (
     "67e55044-10b1-426f-9247-bb680e5fe0c8",

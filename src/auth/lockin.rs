@@ -1,13 +1,12 @@
-use std::str::FromStr;
+use std::{thread::sleep, time::Duration};
 
 use axum::{debug_handler, extract::{Path, Query, State}, response::{IntoResponse, Redirect}};
 use oauth2::{AuthorizationCode, CsrfToken, PkceCodeVerifier, TokenResponse};
 use serde::{Deserialize, Serialize};
 use sqlx::SqlitePool;
 use tower_sessions::Session;
-use uuid::Uuid;
 
-use crate::{AppResult, AppState, GetField};
+use crate::{session::{CSRF_STATE, PKCE_VERIFIER, USER_ID}, AppResult, AppState, GetField};
 
 use super::{clients::ClientProvider, create_profile, Clients};
 
@@ -26,7 +25,7 @@ struct FirebaseRequest {
 }
 
 #[debug_handler(state = AppState)]
-pub async fn lockin(
+pub(crate) async fn lockin(
     Path(provider): Path<ClientProvider>,
     Query(LockinQuery { state, code }): Query<LockinQuery>,
     State(db_pool): State<SqlitePool>,
@@ -36,7 +35,7 @@ pub async fn lockin(
     let state = CsrfToken::new(state.ok_or("OAuth: without state")?);
     let code = AuthorizationCode::new(code.ok_or("OAuth: without code")?);
 
-    let Some(stored_state) = session.get::<String>("csrf_state").await? else {
+    let Some(stored_state) = session.get::<String>(CSRF_STATE).await? else {
         return Err("no csrf_state")?;
     };
 
@@ -44,7 +43,7 @@ pub async fn lockin(
         return Err("csrf tokens don't match")?;
     }
 
-    let Some(pkce_verifier) = session.get::<String>("pkce_verifier").await? else {
+    let Some(pkce_verifier) = session.get::<String>(PKCE_VERIFIER).await? else {
         return Err("no pkce_verifier")?;
     };
     
@@ -73,9 +72,9 @@ pub async fn lockin(
 
     
     let user_id = body.get_str_field("localId")?;
-    session.insert("user_id", user_id.clone()).await?;
+    session.insert(USER_ID, user_id.clone()).await?;
 
-    let mut return_url = session.get("return_url").await?;
+    let return_url = session.get("return_url").await?;
     
     let query: Result<(String,String,String), _> = sqlx::query_as(r#"SELECT user_id,handle,alias FROM profiles WHERE user_id=? AND room_id=0"#)
         .bind(user_id.as_str())
@@ -87,10 +86,6 @@ pub async fn lockin(
         }
         Err(sqlx::Error::RowNotFound) => {
             create_profile(&db_pool, &user_id, "0").await?;
-
-            if let None = return_url {
-                return_url = Some("/r/0".to_string());
-            }
         }
         Err(e) => {
             return Err(e)?;

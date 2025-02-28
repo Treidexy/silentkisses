@@ -15,7 +15,7 @@ use tokio::sync::broadcast;
 pub struct AppState {
     pub db_pool: SqlitePool,
     pub clients: auth::Clients,
-    pub tx: broadcast::Sender<String>
+    pub tx: broadcast::Sender<String>,
 }
 
 pub trait GetField {

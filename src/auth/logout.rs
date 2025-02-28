@@ -5,12 +5,12 @@ use tower_sessions::Session;
 use crate::AppResult;
 
 #[derive(Deserialize)]
-pub struct LogoutQuery {
-    pub return_url: Option<String>,
+pub(crate) struct LogoutQuery {
+    pub(crate) return_url: Option<String>,
 }
 
 #[debug_handler]
-pub async fn logout(
+pub(crate) async fn logout(
     Query(LogoutQuery { return_url }): Query<LogoutQuery>,
     session: Session
 ) -> AppResult<Redirect> {
