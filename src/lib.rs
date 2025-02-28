@@ -9,11 +9,13 @@ use axum::{extract::FromRef, http::StatusCode, response::{Html, IntoResponse, Re
 use oauth2::reqwest;
 use serde_json::Value;
 use sqlx::SqlitePool;
+use tokio::sync::broadcast;
 
 #[derive(Clone, FromRef)]
 pub struct AppState {
     pub db_pool: SqlitePool,
     pub clients: auth::Clients,
+    pub tx: broadcast::Sender<String>
 }
 
 pub trait GetField {
@@ -80,6 +82,7 @@ apperr_impl!(sqlx::Error);
 apperr_impl!(tower_sessions::session::Error);
 apperr_impl!(axum::Error);
 apperr_impl!(reqwest::Error);
+apperr_impl!(uuid::Error);
 
 // bc rust macros fucking suck
 // apperr_impl!(oauth2::RequestTokenError<E: core::error::Error + Send + Sync + 'static, R: oauth2::ErrorResponse + Send + Sync + 'static>);

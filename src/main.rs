@@ -5,6 +5,7 @@ use axum::{
     debug_handler, response::{Html, IntoResponse}, routing::get, Router
 };
 use sqlx::sqlite::SqlitePoolOptions;
+use tokio::sync::broadcast;
 use tower_sessions::{Expiry, MemoryStore, Session, SessionManagerLayer};
 
 #[tokio::main]
@@ -25,6 +26,7 @@ async fn main() {
     let app_state = AppState {
         db_pool,
         clients,
+        tx: broadcast::channel(69).0
     };
 
     let app = Router::new()
@@ -38,7 +40,9 @@ async fn main() {
         .route("/logout", get(auth::logout))
 
         .route("/r/0", get(rooms::private_room))
-        .route("/r/{uuid}", get(rooms::room))
+        .route("/r/{uuid}", get(rooms::room).post(rooms::send_msg))
+        .route("/r/{uuid}/ws", get(rooms::room_ws))
+
         .with_state(app_state)
         .layer(session_layer);
     let listener = tokio::net::TcpListener::bind("0.0.0.0:8080").await.unwrap();

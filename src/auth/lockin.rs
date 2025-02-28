@@ -1,12 +1,15 @@
+use std::str::FromStr;
+
 use axum::{debug_handler, extract::{Path, Query, State}, response::{IntoResponse, Redirect}};
 use oauth2::{AuthorizationCode, CsrfToken, PkceCodeVerifier, TokenResponse};
 use serde::{Deserialize, Serialize};
 use sqlx::SqlitePool;
 use tower_sessions::Session;
+use uuid::Uuid;
 
 use crate::{AppResult, AppState, GetField};
 
-use super::{clients::ClientProvider, create_user, Clients};
+use super::{clients::ClientProvider, create_profile, Clients};
 
 #[derive(Deserialize)]
 pub struct LockinQuery {
@@ -83,7 +86,7 @@ pub async fn lockin(
             println!("welcome @{handle}#{user_id}, {alias}");
         }
         Err(sqlx::Error::RowNotFound) => {
-            create_user(db_pool, user_id).await?;
+            create_profile(&db_pool, &user_id, "0").await?;
 
             if let None = return_url {
                 return_url = Some("/r/0".to_string());

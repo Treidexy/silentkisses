@@ -4,23 +4,50 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{room_name}</title>
+    <style>
+        .message {
+            border: 1px solid black;
+        }
+    </style>
 </head>
 <body>
     <h1>{room_name}</h1>
 
-    <div>
+    <div id="messages">
         {messages}
     </div>
 
     <div style="flex-direction: row;">
-        <span>{user_id}</span>
-        <textarea style="margin-top: 15px;"></textarea>
-        <button>send</button>
+        <textarea id="message-content" name="content" style="margin-top: 15px;"></textarea>
+        <!-- <button onclick="send()">send</button> -->
+        <input type="submit" value="Send" onclick="send()">
     </div>
 
     <script>
+        let ws = new WebSocket('ws://localhost:8080/r/{room_id}/ws');
+        ws.onmessage = function(e) {
+            console.log(e);
+            let messagesDiv = document.getElementById("messages");
+            let message = document.createElement('div');
+            message.innerHTML = e.data;
+            messagesDiv.appendChild(message);
+            // window.location.reload();
+        }
+
         function replyto(uuid) {
             alert("womp womp feature not implement yet");
+        }
+
+        function send() {
+            let messageContent = document.getElementById("message-content").value;
+            let xhr = new XMLHttpRequest();
+            xhr.open("POST", 'http://localhost:8080/r/{room_id}', true);
+            xhr.setRequestHeader('Content-Type', 'application/json');
+            xhr.send(JSON.stringify({
+                reply_to_id: null,
+                content: messageContent,
+            }));
+            console.log(xhr.responseText);
         }
     </script>
 </body>
