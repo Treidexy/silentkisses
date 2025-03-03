@@ -1,6 +1,7 @@
 pub mod auth;
 pub mod rooms;
 pub mod res;
+pub mod profiles;
 pub mod session;
 
 use std::ops::Deref;
@@ -42,28 +43,41 @@ impl GetField for serde_json::Value {
 
 
 pub type AppResult<T> = Result<T, AppError>;
+
 #[derive(Debug)]
-pub struct AppError(pub anyhow::Error);
+pub struct AppError(pub anyhow::Error, pub Response);
+
+impl From<anyhow::Error> for AppError {
+    fn from(error: anyhow::Error) -> Self {
+        let response = (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("{}\n\n{}", error, error.backtrace()),
+        ).into_response();
+        Self(error,response)
+    }
+}
+
+impl From<Response> for AppError {
+    fn from(response: Response) -> Self {
+        Self(anyhow::Error::msg("[error sent as response]"), response)
+    }
+}
 
 impl IntoResponse for AppError {
     fn into_response(self) -> Response {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            format!("{}\n\n{}", self.0, self.0.backtrace()),
-        )
-            .into_response()
+        self.1
     }
 }
 
 impl From<String> for AppError {
     fn from(err: String) -> Self {
-        Self(anyhow::Error::msg(err))
+        Self::from(anyhow::Error::msg(err))
     }
 }
 
 impl From<&str> for AppError {
     fn from(err: &str) -> Self {
-        Self(anyhow::Error::msg(err.to_owned()))
+        Self::from(anyhow::Error::msg(err.to_owned()))
     }
 }
 
@@ -71,7 +85,7 @@ macro_rules! apperr_impl {
     ($E:ty) => {
         impl From<$E> for AppError {
             fn from(err: $E) -> Self {
-                Self(anyhow::Error::from(err))
+                Self::from(anyhow::Error::from(err))
             }
         }
     };
@@ -83,13 +97,14 @@ apperr_impl!(tower_sessions::session::Error);
 apperr_impl!(axum::Error);
 apperr_impl!(reqwest::Error);
 apperr_impl!(uuid::Error);
+apperr_impl!(dotenv::Error);
 
 // bc rust macros fucking suck
 // apperr_impl!(oauth2::RequestTokenError<E: core::error::Error + Send + Sync + 'static, R: oauth2::ErrorResponse + Send + Sync + 'static>);
 
 impl<E: core::error::Error + Send + Sync + 'static, R: oauth2::ErrorResponse + Send + Sync + 'static> From<oauth2::RequestTokenError<E, R>> for AppError {
     fn from(err: oauth2::RequestTokenError<E, R>) -> Self {
-        Self(anyhow::Error::from(err))
+        Self::from(anyhow::Error::from(err))
     }
 }
 

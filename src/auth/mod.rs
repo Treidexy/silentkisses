@@ -23,13 +23,13 @@ pub fn router() -> Router<AppState> {
 
 pub(crate) async fn create_profile(db_pool: &SqlitePool, user_id: &str, room_id: &str) -> Result<(Uuid, sqlx::sqlite::SqliteQueryResult), sqlx::Error> {
     let uuid = Uuid::now_v7();
-    let handle = "user".to_owned() + &uuid.simple().to_string();
+    let handle = format!("user{}", uuid.simple());
     let adjectives = [
         "Quick", "Lazy", "Mysterious", "Jolly", "Brave", "Silent", "Witty", "Fierce",
         "Clever", "Gentle", "Wild", "Calm", "Bold", "Shy", "Proud", "Happy", "Sad",
         "Eager", "Fancy", "Rusty", "Golden", "Silver", "Bright", "Dark", "Lucky",
     ];
-        
+    
     let nouns = [
         "Fox", "Bear", "Eagle", "Wolf", "Dragon", "Tiger", "Lion", "Owl", "Rabbit",
         "Falcon", "Hawk", "Shark", "Panda", "Kitten", "Puppy", "Phoenix", "Griffin",

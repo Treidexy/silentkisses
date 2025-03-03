@@ -18,7 +18,7 @@
     </div>
 
     <div style="flex-direction: row;">
-        <textarea id="message-content" name="content" style="margin-top: 15px;"></textarea>
+        <input id="message-content" style="margin-top: 15px;">
         <!-- <button onclick="send()">send</button> -->
         <input type="submit" value="Send" onclick="send()">
     </div>
@@ -39,14 +39,15 @@
         }
 
         function send() {
-            let messageContent = document.getElementById("message-content").value;
+            let messageContent = document.getElementById("message-content");
             let xhr = new XMLHttpRequest();
             xhr.open("POST", 'http://localhost:8080/r/{room_id}', true);
             xhr.setRequestHeader('Content-Type', 'application/json');
             xhr.send(JSON.stringify({
                 reply_to_id: null,
-                content: messageContent,
+                content: messageContent.value,
             }));
+            messageContent.value = "";
             console.log(xhr.responseText);
         }
     </script>

@@ -1,5 +1,3 @@
-use std::{thread::sleep, time::Duration};
-
 use axum::{debug_handler, extract::{Path, Query, State}, response::{IntoResponse, Redirect}};
 use oauth2::{AuthorizationCode, CsrfToken, PkceCodeVerifier, TokenResponse};
 use serde::{Deserialize, Serialize};

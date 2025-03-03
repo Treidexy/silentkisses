@@ -54,7 +54,7 @@ impl Clients {
 
             let auth_url = AuthUrl::new("https://accounts.google.com/o/oauth2/auth".to_string()).unwrap();
             let token_url = TokenUrl::new("https://oauth2.googleapis.com/token".to_string()).unwrap();
-            let redirect_url = RedirectUrl::new("http://localhost:8080/lockin/google".to_string()).unwrap();
+            let redirect_url = RedirectUrl::new("http://localhost:8080/lockin/google".to_owned()).unwrap();
 
             Some(
                 BasicClient::new(client_id)
@@ -74,7 +74,7 @@ impl Clients {
 
             let auth_url = AuthUrl::new("https://github.com/login/oauth/authorize".to_string()).unwrap();
             let token_url = TokenUrl::new("https://github.com/login/oauth/access_token".to_string()).unwrap();
-            let redirect_url = RedirectUrl::new("http://localhost:8080/lockin/github".to_string()).unwrap();
+            let redirect_url = RedirectUrl::new("http://localhost:8080/lockin/github".to_owned()).unwrap();
 
             Some(
                 BasicClient::new(client_id)

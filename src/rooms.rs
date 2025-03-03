@@ -2,6 +2,7 @@ use axum::{
     debug_handler, extract::{Path, State, WebSocketUpgrade}, response::{Html, IntoResponse, Response}, routing::get, Json, Router
 };
 use pulldown_cmark::Parser;
+use reqwest::StatusCode;
 use serde::Deserialize;
 use sqlx::SqlitePool;
 use tokio::sync::broadcast;
@@ -11,13 +12,13 @@ use uuid::Uuid;
 use crate::{auth, include_res, session::USER_ID, AppResult, AppState};
 
 #[derive(Deserialize)]
-pub struct MessageQuery {
+struct MessageQuery {
     reply_to_id: Option<Uuid>,
     content: String,
 }
 
 #[debug_handler]
-pub async fn private_room() -> impl IntoResponse {
+async fn private_room() -> impl IntoResponse {
     Html(include_res!(str, "pages/private_room.html"))
 }
 
@@ -29,23 +30,31 @@ pub fn router() -> Router<AppState> {
 }
 
 #[debug_handler]
-pub async fn room(
+async fn room(
     Path(room_id): Path<Uuid>,
     State(db_pool): State<SqlitePool>,
     session: Session,
 ) -> AppResult<Response> {
+    let sorry: AppResult<Response> = Err((
+        StatusCode::FORBIDDEN,
+        Html(
+            include_res!(str, "pages/sorry.html")
+            .replace("{service}", "room")
+        )
+    ).into_response().into());
+
     let Some((name, is_public)): Option<(String, bool)> =
         sqlx::query_as("SELECT name,is_public FROM rooms WHERE uuid=?")
             .bind(room_id.to_string())
             .fetch_optional(&db_pool)
             .await?
     else {
-        return Err(format!("r/{room_id} don't exist lil bro 2"))?;
+        return sorry;
     };
 
     if !is_public {
         let Some(client_user_id) = session.get::<String>(USER_ID).await? else {
-            return Err(format!("sign in to access r/{room_id}"))?;
+            return sorry;
         };
 
         if sqlx::query_as::<_, ()>("SELECT 1 FROM profiles WHERE uuid=? AND room_id=?")
@@ -54,7 +63,7 @@ pub async fn room(
             .fetch_optional(&db_pool)
             .await?
             .is_none() {
-                return Err(format!("your account doesn't have access to r/{room_id}"))?;
+            return sorry;
         }
     }
 
@@ -103,7 +112,7 @@ pub async fn room_ws(
 }
 
 #[debug_handler(state = crate::AppState)]
-pub async fn send_msg(
+async fn send_msg(
     Path(room_id): Path<Uuid>,
     State(db_pool): State<SqlitePool>,
     State(tx): State<broadcast::Sender<String>>,
@@ -155,7 +164,7 @@ pub async fn send_msg(
     Ok(())
 }
 
-pub async fn msg_to_html(
+async fn msg_to_html(
     id: Uuid,
     room_id: Uuid,
     profile_id: Uuid,

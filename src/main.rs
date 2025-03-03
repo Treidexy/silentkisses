@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-use silentkisses::{auth, include_res, rooms, AppResult, AppState, Markdown};
+use silentkisses::{auth, include_res, profiles, rooms, AppResult, AppState, Markdown};
 use axum::{
     debug_handler, response::{Html, IntoResponse}, routing::get, Router
 };
@@ -36,6 +36,7 @@ async fn main() {
 
         .merge(auth::router())
         .nest("/r", rooms::router())
+        .nest("/p", profiles::router())
 
         .with_state(app_state)
         .layer(session_layer);
