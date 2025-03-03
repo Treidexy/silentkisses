@@ -12,7 +12,7 @@ use uuid::Uuid;
 use crate::{auth, include_res, session::USER_ID, AppResult, AppState};
 
 #[derive(Deserialize)]
-struct MessageQuery {
+struct SendMessageQuery {
     reply_to_id: Option<Uuid>,
     content: String,
 }
@@ -118,7 +118,7 @@ async fn send_msg(
     State(tx): State<broadcast::Sender<String>>,
     session: Session,
 
-    Json(MessageQuery { reply_to_id, content }): Json<MessageQuery>,
+    Json(SendMessageQuery { reply_to_id, content }): Json<SendMessageQuery>,
 ) -> AppResult<impl IntoResponse> {
     let Some(user_id) = session.get::<String>(USER_ID).await? else {
         return Err("must sign in")?;
