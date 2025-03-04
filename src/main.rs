@@ -54,9 +54,9 @@ async fn hello(
     session: Session
 ) -> AppResult<impl IntoResponse> {
     let p = if session.get::<String>("user_id").await?.is_some() {
-        include_res!(str, "/pages/index_logout.html")
+        include_res!(str, "/pages/index.html")
     } else {
-        include_res!(str, "/pages/index_login.html")
+        include_res!(str, "/pages/index.html")
     };
 
     Ok(Html(p))
