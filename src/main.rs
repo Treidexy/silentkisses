@@ -2,7 +2,7 @@ use std::str::FromStr;
 
 use silentkisses::{auth, include_res, profiles, rooms, AppResult, AppState, Markdown};
 use axum::{
-    debug_handler, response::{Html, IntoResponse}, routing::get, Router
+    debug_handler, response::{Html, IntoResponse, Redirect, Response}, routing::get, Router
 };
 use sqlx::sqlite::SqlitePoolOptions;
 use tokio::sync::broadcast;
@@ -49,15 +49,20 @@ async fn test() -> impl IntoResponse {
     Markdown(include_res!(str, "/pages/hello.md"))
 }
 
+
 #[debug_handler]
 async fn hello(
     session: Session
-) -> AppResult<impl IntoResponse> {
-    let p = if session.get::<String>("user_id").await?.is_some() {
-        include_res!(str, "/pages/index.html")
+) -> AppResult<Response> {
+    if session.get::<String>("user_id").await?.is_some() {
+        Ok(
+            Html(include_res!(str, "/pages/index.html"))
+            .into_response()
+        )
     } else {
-        include_res!(str, "/pages/index.html")
-    };
-
-    Ok(Html(p))
+        Ok(
+            Redirect::to("/login")
+                .into_response()
+        )
+    }
 }

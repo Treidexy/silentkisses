@@ -67,7 +67,6 @@ pub(crate) async fn lockin(
         .await?
         .json()
         .await?;
-
     
     let user_id = body.get_str_field("localId")?;
     session.insert(USER_ID, user_id.clone()).await?;
