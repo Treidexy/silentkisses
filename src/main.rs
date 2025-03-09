@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-use silentkisses::{auth, include_res, profiles, rooms, AppResult, AppState, Markdown};
+use silentkisses::{auth, include_res, index, profiles, rooms, AppResult, AppState, Markdown};
 use axum::{
     debug_handler, response::{Html, IntoResponse, Redirect, Response}, routing::get, Router
 };
@@ -31,7 +31,7 @@ async fn main() {
     };
 
     let app = Router::new()
-        .route("/", get(hello))
+        .route("/", get(index::index))
         .route("/test", get(test))
 
         .merge(auth::router())
@@ -41,28 +41,11 @@ async fn main() {
         .with_state(app_state)
         .layer(session_layer);
     let listener = tokio::net::TcpListener::bind("0.0.0.0:8080").await.unwrap();
+    println!("running on port http://localhost:8080");
     axum::serve(listener, app).await.unwrap();
 }
 
 #[debug_handler]
 async fn test() -> impl IntoResponse {
     Markdown(include_res!(str, "/pages/hello.md"))
-}
-
-
-#[debug_handler]
-async fn hello(
-    session: Session
-) -> AppResult<Response> {
-    if session.get::<String>("user_id").await?.is_some() {
-        Ok(
-            Html(include_res!(str, "/pages/index.html"))
-            .into_response()
-        )
-    } else {
-        Ok(
-            Redirect::to("/login")
-                .into_response()
-        )
-    }
 }

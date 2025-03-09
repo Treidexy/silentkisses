@@ -44,6 +44,12 @@
         a {
             font-size: 11px;
         }
+
+        ul {
+            list-style-type: none;
+            padding: 0;
+            margin: 0;
+        }
     </style>
 </head>
 <body>
@@ -52,10 +58,7 @@
         <div id="rooms">
             <h2>Rooms</h2>
             <ul>
-                <li>room 1</li>
-                <li>room 2</li>
-                <li>room 3</li>
-                <li>room 4</li>
+                {room_items}
             </ul>
         </div>
     </div>
