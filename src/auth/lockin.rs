@@ -73,21 +73,7 @@ pub(crate) async fn lockin(
 
     let return_url = session.get("return_url").await?;
     
-    let query: Result<(String,String,String), _> = sqlx::query_as(r#"SELECT user_id,handle,alias FROM profiles WHERE user_id=? AND room_id=0"#)
-        .bind(user_id.as_str())
-        .fetch_one(&db_pool)
-        .await;
-    match query {
-        Ok((user_id, handle, alias)) => {
-            println!("welcome @{handle}#{user_id}, {alias}");
-        }
-        Err(sqlx::Error::RowNotFound) => {
-            create_profile(&db_pool, &user_id, "0").await?;
-        }
-        Err(e) => {
-            return Err(e)?;
-        }
-    }
+    println!("welcome u/{user_id}");
 
     let return_url: String = return_url.unwrap_or("/".to_string());
     Ok(Redirect::to(return_url.as_str()))

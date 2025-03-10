@@ -22,10 +22,6 @@ pub async fn index(
         .fetch_all(&db_pool)
         .await?;
     for (room_id,) in room_ids {
-        if room_id == "0" {
-            continue;
-        }
-
         let (name,): (String,) = sqlx::query_as("SELECT name FROM rooms WHERE uuid=?")
             .bind(&room_id)
             .fetch_one(&db_pool)

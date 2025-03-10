@@ -29,18 +29,10 @@ async fn profile(
         return sorry;
     };
 
-    let (puser_id, room_id, handle, alias): (String, String, String, String) = sqlx::query_as("SELECT user_id,room_id,handle,alias FROM profiles WHERE uuid=?")
+    let (room_id, handle, alias): (String, String, String) = sqlx::query_as("SELECT room_id,handle,alias FROM profiles WHERE uuid=?")
         .bind(profile_id.to_string())
         .fetch_one(&db_pool)
         .await?;
-
-    if room_id == "0" {
-        if user_id == puser_id {
-            return Ok(Redirect::to("/r/0").into_response());
-        } else {
-            return sorry;
-        }
-    }
 
     if sqlx::query("SELECT 1 FROM profiles WHERE user_id=? AND room_id=?")
         .bind(&user_id)
