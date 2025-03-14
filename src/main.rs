@@ -1,17 +1,16 @@
 use std::str::FromStr;
 
-use silentkisses::{auth, include_res, index, profiles, rooms, AppResult, AppState, Markdown};
+use serde::Deserialize;
+use silentkisses::{auth, include_res, index, profiles, rooms, AppState, Markdown};
 use axum::{
-    debug_handler, response::{Html, IntoResponse, Redirect, Response}, routing::get, Router
+    body::Body, debug_handler, extract::{Query, Request}, response::{Html, IntoResponse, Redirect, Response}, routing::get, Router
 };
 use sqlx::sqlite::SqlitePoolOptions;
 use tokio::sync::broadcast;
-use tower_sessions::{cookie::SameSite, Expiry, MemoryStore, Session, SessionManagerLayer};
+use tower_sessions::{cookie::SameSite, Expiry, MemoryStore, SessionManagerLayer};
 
 #[tokio::main]
 async fn main() {
-    std::env::set_var("RUST_BACKTRACE", "1");
-
     let session_store = MemoryStore::default();
     let session_layer = SessionManagerLayer::new(session_store)
         .with_secure(false)
@@ -32,7 +31,7 @@ async fn main() {
 
     let app = Router::new()
         .route("/", get(index::index))
-        .route("/test", get(test))
+        .route("/hello", get(hello))
 
         .merge(auth::router())
         .nest("/r", rooms::router())
@@ -46,6 +45,6 @@ async fn main() {
 }
 
 #[debug_handler]
-async fn test() -> impl IntoResponse {
-    Markdown(include_res!(str, "/pages/hello.md"))
+async fn hello() -> impl IntoResponse {
+    Markdown(include_res!(str, "pages/hello.md"))
 }

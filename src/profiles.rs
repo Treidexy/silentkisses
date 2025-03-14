@@ -1,10 +1,9 @@
-use axum::{debug_handler, extract::{Path, State}, response::{Html, IntoResponse, Redirect, Response}, routing::get, Router};
-use reqwest::StatusCode;
+use axum::{debug_handler, extract::{Path, State}, response::{Html, IntoResponse, Response}, routing::get, Router};
 use sqlx::SqlitePool;
 use tower_sessions::Session;
 use uuid::Uuid;
 
-use crate::{include_res, session::USER_ID, AppResult, AppState};
+use crate::{include_res, res, session::USER_ID, AppResult, AppState};
 
 pub fn router() -> Router<AppState> {
     Router::new()
@@ -17,13 +16,7 @@ async fn profile(
     State(db_pool): State<SqlitePool>,
     session: Session,
 ) -> AppResult<Response> {
-    let sorry = Err((
-        StatusCode::FORBIDDEN,
-        Html(
-            include_res!(str, "pages/sorry.html")
-            .replace("{service}", "profile")
-        )
-    ).into_response().into());
+    let sorry: Result<axum::http::Response<axum::body::Body>, crate::AppError> = res::sorry("profile");
 
     let Some(user_id) = session.get::<String>(USER_ID).await? else {
         return sorry;

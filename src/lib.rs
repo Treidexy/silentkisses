@@ -1,8 +1,9 @@
 pub mod auth;
-pub mod rooms;
-pub mod res;
+pub mod db;
 pub mod index;
 pub mod profiles;
+pub mod res;
+pub mod rooms;
 pub mod session;
 
 use std::ops::Deref;

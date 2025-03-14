@@ -1,6 +1,6 @@
 create table profiles (
     -- pid
-    uuid text not null unique,
+    uuid text not null,
 
     -- uid
     user_id text not null,
@@ -10,16 +10,19 @@ create table profiles (
     handle text not null,
     alias text not null,
 
+    unique(uuid),
     unique(user_id, room_id),
     unique(handle, room_id)
 ) strict;
 
 create table rooms (
     -- rid
-    uuid text not null unique,
+    uuid text not null,
 
     name text not null,
-    is_public integer not null
+    is_public integer not null,
+
+    unique(uuid)
 ) strict;
 
 create table messages (

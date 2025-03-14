@@ -40,7 +40,5 @@ pub(crate) async fn login(
         session.insert(RETURN_URL, return_url).await?;
     }
 
-    dbg!(session.get_value(CSRF_STATE).await?);
-
     Ok(Redirect::to(authorize_url.as_str()).into_response())
 }
