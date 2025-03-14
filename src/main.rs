@@ -1,9 +1,8 @@
 use std::str::FromStr;
 
-use serde::Deserialize;
 use silentkisses::{auth, include_res, index, profiles, rooms, AppState, Markdown};
 use axum::{
-    body::Body, debug_handler, extract::{Query, Request}, response::{Html, IntoResponse, Redirect, Response}, routing::get, Router
+    debug_handler, response::IntoResponse, routing::get, Router
 };
 use sqlx::sqlite::SqlitePoolOptions;
 use tokio::sync::broadcast;

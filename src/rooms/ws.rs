@@ -5,7 +5,7 @@ use tokio::sync::broadcast;
 use tower_sessions::Session;
 use uuid::Uuid;
 
-use crate::{auth, res, rooms::msg, session::USER_ID, AppResult};
+use crate::{auth, rooms::msg, session::USER_ID};
 
 #[debug_handler(state = crate::AppState)]
 pub async fn room_ws(

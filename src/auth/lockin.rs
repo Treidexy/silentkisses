@@ -6,7 +6,7 @@ use tower_sessions::Session;
 
 use crate::{session::{CSRF_STATE, PKCE_VERIFIER, USER_ID}, AppResult, AppState, GetField};
 
-use super::{clients::ClientProvider, create_profile, Clients};
+use super::{clients::ClientProvider, Clients};
 
 #[derive(Deserialize)]
 pub struct LockinQuery {

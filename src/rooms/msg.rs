@@ -1,11 +1,10 @@
-use axum::{debug_handler, extract::{Path, State}, response::{IntoResponse, Response}, Json};
+use axum::response::{IntoResponse, Response};
 use serde::Deserialize;
 use sqlx::SqlitePool;
 use tokio::sync::broadcast;
-use tower_sessions::Session;
 use uuid::Uuid;
 
-use crate::{auth, include_res, res, session::USER_ID, AppResult};
+use crate::{include_res, AppResult};
 
 #[derive(Deserialize)]
 pub(crate) struct SendMessageQuery {

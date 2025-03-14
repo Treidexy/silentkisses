@@ -3,14 +3,9 @@ mod msg;
 mod new;
 mod ws;
 
-use axum::{debug_handler, extract::{Path, State}, response::{IntoResponse, Response}, routing::get, Json, Router};
-use serde::Deserialize;
-use sqlx::SqlitePool;
-use tokio::sync::broadcast;
-use tower_sessions::Session;
-use uuid::Uuid;
+use axum::{routing::get, Router};
 
-use crate::{auth, res, session::USER_ID, AppResult, AppState};
+use crate::AppState;
 
 pub fn router() -> Router<AppState> {
     Router::new()
