@@ -1,9 +1,9 @@
-use axum::{debug_handler, extract::{Path, State}, response::{Html, IntoResponse, Response}, routing::get, Router};
+use axum::{debug_handler, extract::{Path, State}, response::{Html, IntoResponse, Response}};
 use sqlx::SqlitePool;
 use tower_sessions::Session;
 use uuid::Uuid;
 
-use crate::{include_res, res, session::USER_ID, AppResult, AppState};
+use crate::{include_res, res, session::USER_ID, AppResult};
 
 #[debug_handler]
 pub(crate) async fn profile(
