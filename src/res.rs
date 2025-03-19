@@ -21,7 +21,7 @@ pub fn sorry(service: &str) -> AppResult<Response> {
         StatusCode::FORBIDDEN,
         Html(
             include_res!(str, "pages/sorry.html")
-            .replace("{service}", "room")
+            .replace("{service}", service)
         )
     ).into_response().into())
 }

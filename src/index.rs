@@ -27,14 +27,14 @@ pub async fn index(
             .fetch_one(&db_pool)
             .await?;
 
-        room_items += &include_res!(str, "pages/room_item.html")
+        room_items += &include_res!(str, "pages/index/room_item.html")
             .replace("{id}", &room_id)
             .replace("{name}", &name);
     }
 
     Ok(
         Html(
-            include_res!(str, "/pages/index.html")
+            include_res!(str, "/pages/index/index.html")
                 .replace("{room_items}", &room_items)
         ).into_response()
     )

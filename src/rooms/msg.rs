@@ -57,7 +57,7 @@ pub(crate) async fn msg_to_html(
     let mut content_html = String::new();
     pulldown_cmark::html::push_html(&mut content_html, pulldown_cmark::Parser::new(&content));
 
-    let mut message = include_res!(str, "pages/message.html")
+    let mut message = include_res!(str, "pages/rooms/message.html")
         .replace("{alias}", &alias)
         .replace("{handle}", &handle)
         .replace("{id}", &id.to_string())

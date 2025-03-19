@@ -14,7 +14,7 @@ pub(crate) struct LoginQuery {
 
 #[debug_handler]
 pub(crate) async fn login_page() -> impl IntoResponse {
-    Html(include_res!(str, "/pages/login.html"))
+    Html(include_res!(str, "/pages/auth/login.html"))
 }
 
 

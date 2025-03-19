@@ -1,8 +1,7 @@
 use std::str::FromStr;
-
 use silentkisses::{auth, include_res, index, profiles, rooms, AppState, Markdown};
 use axum::{
-    debug_handler, response::IntoResponse, routing::get, Router
+    debug_handler, extract::Request, response::IntoResponse, routing::get, Router
 };
 use sqlx::sqlite::SqlitePoolOptions;
 use tokio::sync::broadcast;
@@ -31,6 +30,7 @@ async fn main() {
     let app = Router::new()
         .route("/", get(index::index))
         .route("/hello", get(hello))
+        .route("/test", get(test))
 
         .merge(auth::router())
         .nest("/r", rooms::router())
@@ -46,4 +46,9 @@ async fn main() {
 #[debug_handler]
 async fn hello() -> impl IntoResponse {
     Markdown(include_res!(str, "pages/hello.md"))
+}
+
+#[debug_handler]
+async fn test(r: Request) {
+    dbg!(r);
 }

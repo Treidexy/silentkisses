@@ -1,4 +1,5 @@
 use axum::{debug_handler, extract::State, response::{Html, IntoResponse, Redirect, Response}, Form};
+use reqwest::StatusCode;
 use serde::Deserialize;
 use sqlx::SqlitePool;
 use tower_sessions::Session;
@@ -22,7 +23,7 @@ pub(crate) async fn new_room_page(
     }
 
     Ok(Html(
-        include_res!(str, "pages/new_room.html")
+        include_res!(str, "pages/rooms/new.html")
     ).into_response())
 }
 
@@ -33,6 +34,13 @@ pub(crate) async fn new_room(
 
     Form(NewRoomQuery { name, is_public }): Form<NewRoomQuery>,
 ) -> AppResult<Response> {
+    if session.get::<String>(USER_ID).await?.is_none() {
+        return Err((
+            StatusCode::UNAUTHORIZED,
+            "Sign in to use this feature"
+        ).into_response().into());
+    }
+
     let uuid = Uuid::now_v7();
     sqlx::query("INSERT INTO rooms (uuid,name,is_public) values (?,?,?)")
         .bind(uuid.to_string())

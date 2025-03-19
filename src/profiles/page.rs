@@ -5,18 +5,13 @@ use uuid::Uuid;
 
 use crate::{include_res, res, session::USER_ID, AppResult, AppState};
 
-pub fn router() -> Router<AppState> {
-    Router::new()
-        .route("/{uuid}", get(profile))
-}
-
 #[debug_handler]
-async fn profile(
+pub(crate) async fn profile(
     Path(profile_id): Path<Uuid>,
     State(db_pool): State<SqlitePool>,
     session: Session,
 ) -> AppResult<Response> {
-    let sorry: Result<axum::http::Response<axum::body::Body>, crate::AppError> = res::sorry("profile");
+    let sorry = res::sorry("profile");
 
     let Some(user_id) = session.get::<String>(USER_ID).await? else {
         return sorry;
@@ -41,7 +36,7 @@ async fn profile(
         .await?;
 
     Ok(Html(
-        include_res!(str, "pages/profile.html")
+        include_res!(str, "pages/profiles/profile.html")
         .replace("{alias}", &alias)
         .replace("{handle}", &handle)
         .replace("{room_id}", &room_id)

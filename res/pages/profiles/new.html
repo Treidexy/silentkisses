@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create Profile</title>
+</head>
+<body>
+    <h1><a href="/r/{room_id}">{room_name}</a></h1>
+    <form action="/p/new" autocomplete="off" method="post">
+        <label for="alias-input">Alias</label>
+        <input name="alias" id="alias-input" type="text" required/>
+        <br>
+        <label for="handle-input">Handle</label>
+        @<input name="handle" id="handle-input" type="text" pattern="^([0-9a-z_])+$" required/>
+        <br>
+        <label for="handle-input">Only letters, numbers, and underscores allowed.</label>
+        <br>
+        <br>
+        <input type="submit"/>
+    </form>
+
+    <script>
+        let handleInput = document.getElementById('handle-input');
+        handleInput.setCustomValidity('Only letters, numbers, and underscores allowed.');
+        handleInput.addEventListener('input', function(e) {
+            let regex = /^([0-9a-z_])+$/;
+            let regex1 = /([0-9a-z_])+/;
+
+            if (!regex.test(handleInput.value)) {
+                handleInput.value = regex1.exec(handleInput.value)?.shift() ?? '';
+            }
+        })
+    </script>
+</body>
+</html>

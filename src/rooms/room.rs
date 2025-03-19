@@ -60,7 +60,7 @@ pub(crate) async fn room(
         ).await?;
     }
 
-    let body = include_res!(str, "pages/room.html")
+    let body = include_res!(str, "pages/rooms/room.html")
         .replace("{room_id}", &room_id.to_string())
         .replace("{room_name}", &name)
         .replace("{messages}", &messages);
